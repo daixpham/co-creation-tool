@@ -12,6 +12,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using GraphiQl;
 using GraphQL;
+using GraphQL.Server;
+using GraphQL.Server.Ui.Playground;
+using GraphQL.Server.Ui.GraphiQL;
 using GraphQL.Types;
 using GraphQL.Http;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +39,12 @@ namespace graphQL_test
                 {
                     options.AddPolicy("AllowMyOrigin", builder => builder.WithOrigins("http://localhost:3000"));
                 });
+
+            services.AddGraphQL(options =>{
+                options.EnableMetrics = true;
+                options.ExposeExceptions = true;
+                
+            }).AddDataLoader().AddGraphTypes();
 
             services.AddSingleton<IDependencyResolver>(_ => new FuncDependencyResolver(_.GetRequiredService));
             services.AddSingleton<IDocumentExecuter, DocumentExecuter>();
@@ -63,9 +72,7 @@ namespace graphQL_test
 
             //DB
             services.AddSingleton<DbContextOptions<BloggingContext>>();
-           services.Configure<IISServerOptions>(options =>{
-               options.AllowSynchronousIO = true;
-           });
+   
             services.AddSingleton<BloggingContext>();
             services.AddDbContext<BloggingContext>(options =>
                 options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"))
@@ -84,9 +91,16 @@ namespace graphQL_test
                 app.UseGraphiQl("/graphql");
             }
 
+            app.UseWebSockets();
+            //app.UseGraphQL<GraphQLDemoSchema>("/graphql");
+            app.UseGraphQLWebSockets<GraphQLDemoSchema>("/graphql");
             app.UseHttpsRedirection();
             app.UseRouting();
-
+            app.UseGraphiQLServer(new GraphiQLOptions
+            {
+                Path = "/ui/graphiql",
+                GraphQLEndPoint = "/graphql",
+            });
             app.UseAuthorization();
             app.UseCors(options => options.WithOrigins("http://localhost:3000").AllowAnyMethod().WithOrigins("http://localhost:3000").AllowAnyHeader());
             app.UseEndpoints(endpoints =>

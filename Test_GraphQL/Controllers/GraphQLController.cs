@@ -44,7 +44,7 @@ namespace graphQL_test.Controllers
                 return _errors;
             }
 
-            return Ok(result.Data);
+            return Ok(result);
         }
     }
 }
